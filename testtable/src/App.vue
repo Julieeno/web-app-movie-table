@@ -99,46 +99,23 @@
                 </v-row>
                 <v-col cols="12">
                     <v-data-table
-                            v-model="selected"
-                            v-if="editing === false"
-                            :headers="headers"
-                            :items="products"
-                            :page.sync="offset"
-                            :items-per-page="limit"
-                            hide-default-footer
-                            :search="search"
-                            show-select
-                            class="elevation-1"
-                    >
-                        <template v-slot:header>
-                            <tr>
-                                <th class="text-left grey lighten-4 pa-4 elevation-1"
-                                    v-for="header in headerz"
-                                    :key="header.value"
-                                    @click="updateSortBy(header)"
-                                >
-                                {{ header.text }}
-                                </th>
-                            </tr>
-                        </template>
-                    </v-data-table>
-                    <template>
-                        <v-row class="mt-4">
-                        <v-pagination
-                            v-model="pageCounter"
-                            :length="(totalProducts/limit)+1"
-                            @input="fetchData()"
-                        >
-                        </v-pagination>
-                        <v-select
-                            v-model="limit"
-                            :items="limitOptions"
-                            label="Items per page"
-                            @change="fetchData()"
-                        >
-                        </v-select>
-                        </v-row>
-                    </template>
+                        v-model="selected"
+                        :headers="headers"
+                        :items="products"
+                        :page.sync="page"
+                        :items-per-page.sync="limit"
+                        :server-items-length="totalProducts"
+                        show-select
+                        class="elevation-1"
+                        :loading="loading"
+                        @update:page="limit = $event;fetchData()"
+                        :sort-by.sync="sortBy"
+                        :sort-desc.sync="sortDesc"
+                        :search.sync="search"
+                        @update:sort-by="sortBy = $event;fetchData()"
+                        @update:sort-desc="sortDesc = $event;fetchData()"
+                        @input:search="search = $event;fetchData()"
+                    ></v-data-table>
                 </v-col>
             </template>
         </v-app>
@@ -156,17 +133,9 @@ export default {
         products: [],
         selected: [],
         sortBy: 'id',
+        sortDesc: false,
         loading: true,
         headers: [
-            { text: 'Id', value: 'id' },
-            { text: 'Name', value: 'name' },
-            { text: 'Director', value: 'director' },
-            { text: 'Year', value: 'year' },
-            { text: 'Company', value: 'company' },
-            { text: 'Rating', value: 'rating' }
-        ],
-        headerz: [
-            { text: 'Select', value: 'select', sortable: false, clickable: false},
             { text: 'Id', value: 'id' },
             { text: 'Name', value: 'name' },
             { text: 'Director', value: 'director' },
@@ -180,7 +149,7 @@ export default {
         editBody: '',
         limit: 5,
         limitOptions: [5, 10, 15, 20],
-        pageCounter: 1,
+        page: 1,
         offset: 0,
         totalProducts: 0,
         newMovie: {
@@ -200,31 +169,60 @@ export default {
         },
         search: ''
     }),
+    watch: {
+        options: {
+            handler() {
+                this.fetchData()
+            },
+            deep:true
+        },
+    },
     methods: {
         options,
-
         async fetchData() {
             this.loading = true;
-            this.offset = (this.pageCounter * this.limit)-this.limit;
+            this.offset = (this.page-1) * this.limit;
             //console.log(this.offset);
             let search = '';
             if (this.search !== '') {
                 search = '&search=%' + this.search + '%'
             }
-            await fetch('http://localhost:8000/items/?offset=' + (this.offset)
+            axios.get('http://localhost:8000/items/?offset=' + (this.offset)
                                                         + '&limit=' + this.limit
                                                         + '&sort=' + this.sortBy
+                                                        + '&order=' + (this.sortDesc ? 'desc' : 'asc')
                                                         + search)
-                .then(response => response.json())
-                .then(data => {
+                .then(response => {
                     this.loading = false;
-                    this.totalProducts = data.total;
-                    this.products = data.items;
+                    this.totalProducts = response.data.total;
+                    this.products = response.data.items;
                 })
                 .catch(error => {
                     console.log(error);
                 });
         },
+        // async fetchData() {
+        //     this.loading = true;
+        //     this.offset = (this.page-1) * this.limit;
+        //     //console.log(this.offset);
+        //     let search = '';
+        //     if (this.search !== '') {
+        //         search = '&search=%' + this.search + '%'
+        //     }
+        //     await fetch('http://localhost:8000/items/?offset=' + (this.offset)
+        //                                                 + '&limit=' + this.limit
+        //                                                 + '&sort=' + this.sortBy
+        //                                                 + search)
+        //         .then(response => response.json())
+        //         .then(data => {
+        //             this.loading = false;
+        //             this.totalProducts = data.total;
+        //             this.products = data.items;
+        //         })
+        //         .catch(error => {
+        //             console.log(error);
+        //         });
+        // },
         close() {
             this.adding = false;
         },
