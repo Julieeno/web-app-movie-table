@@ -95,7 +95,7 @@
                             <v-btn color="blue darken-1" text @click="editElement()">Save</v-btn>
                         </v-card-actions>
                     </v-card>
-                    <v-text-field v-model="search" @change="fetchData" v-if="editing === false" label="Search" append-icon="mdi-magnify" single-line hide-details></v-text-field>
+                    <v-text-field v-model="search" @change="fetchData()" v-if="editing === false" label="Search" append-icon="mdi-magnify" single-line hide-details></v-text-field>
                 </v-row>
                 <v-col cols="12">
                     <v-data-table
@@ -103,17 +103,18 @@
                         :headers="headers"
                         :items="products"
                         :page.sync="page"
+                        @update:page="offset = $event;fetchData()"
                         :items-per-page.sync="limit"
+                        @update:items-per-page="limit = $event;fetchData()"
                         :server-items-length="totalProducts"
                         show-select
                         class="elevation-1"
                         :loading="loading"
-                        @update:page="limit = $event;fetchData()"
                         :sort-by.sync="sortBy"
-                        :sort-desc.sync="sortDesc"
-                        :search.sync="search"
                         @update:sort-by="sortBy = $event;fetchData()"
+                        :sort-desc.sync="sortDesc"
                         @update:sort-desc="sortDesc = $event;fetchData()"
+                        :search.sync="search"
                         @input:search="search = $event;fetchData()"
                     ></v-data-table>
                 </v-col>
@@ -148,7 +149,6 @@ export default {
         editing: false,
         editBody: '',
         limit: 5,
-        limitOptions: [5, 10, 15, 20],
         page: 1,
         offset: 0,
         totalProducts: 0,
@@ -185,9 +185,9 @@ export default {
             //console.log(this.offset);
             let search = '';
             if (this.search !== '') {
-                search = '&search=%' + this.search + '%'
+                search = '&search=' + this.search + '%'
             }
-            axios.get('http://localhost:8000/items/?offset=' + (this.offset)
+             await axios.get('http://localhost:8000/items/?offset=' + (this.offset)
                                                         + '&limit=' + this.limit
                                                         + '&sort=' + this.sortBy
                                                         + '&order=' + (this.sortDesc ? 'desc' : 'asc')
@@ -242,10 +242,10 @@ export default {
             console.log(this.selected[0])
             const response = await axios.put(`http://localhost:8000/items/${this.selected[0].id}`, {
                 name: this.editMovie.name,
-                director: this.selected[0].director,
-                year: this.selected[0].year,
-                company: this.selected[0].company,
-                rating: this.selected[0].rating
+                director: this.editMovie.director,
+                year: this.editMovie.year,
+                company: this.editMovie.company,
+                rating: this.editMovie.rating
             })
             console.log(response.data);
             this.selected = [];
@@ -259,14 +259,6 @@ export default {
                 rating: ''
             };
             this.editing = false;
-        },
-        updateSortBy(header) {
-            console.log(header);
-            if(header.value != this.sortBy)
-                this.sortBy = header.value;
-            else if (header.value == this.sortBy)
-                this.sortBy = this.sortBy + '&order=desc'
-            this.fetchData();
         },
         async deleteElements() {
             const promises = this.selected.map(item => axios.delete(`http://localhost:8000/items/${item.name}/`));
