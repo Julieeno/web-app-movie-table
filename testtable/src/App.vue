@@ -183,15 +183,16 @@ export default {
             this.loading = true;
             this.offset = (this.page-1) * this.limit;
             //console.log(this.offset);
-            let search = '';
-            if (this.search !== '') {
-                search = '&search=' + this.search + '%'
-            }
-             await axios.get('http://localhost:8000/items/?offset=' + (this.offset)
-                                                        + '&limit=' + this.limit
-                                                        + '&sort=' + this.sortBy
-                                                        + '&order=' + (this.sortDesc ? 'desc' : 'asc')
-                                                        + search)
+
+             await axios.get('http://localhost:8000/items/', {
+                 params: {
+                     offset: this.offset,
+                     limit: this.limit,
+                     sort: this.sortBy,
+                     order: this.sortDesc ? 'desc' : 'asc',
+                     search: this.search ? '%' + this.search + '%' : null
+                 }
+             })
                 .then(response => {
                     this.loading = false;
                     this.totalProducts = response.data.total;
@@ -201,28 +202,6 @@ export default {
                     console.log(error);
                 });
         },
-        // async fetchData() {
-        //     this.loading = true;
-        //     this.offset = (this.page-1) * this.limit;
-        //     //console.log(this.offset);
-        //     let search = '';
-        //     if (this.search !== '') {
-        //         search = '&search=%' + this.search + '%'
-        //     }
-        //     await fetch('http://localhost:8000/items/?offset=' + (this.offset)
-        //                                                 + '&limit=' + this.limit
-        //                                                 + '&sort=' + this.sortBy
-        //                                                 + search)
-        //         .then(response => response.json())
-        //         .then(data => {
-        //             this.loading = false;
-        //             this.totalProducts = data.total;
-        //             this.products = data.items;
-        //         })
-        //         .catch(error => {
-        //             console.log(error);
-        //         });
-        // },
         close() {
             this.adding = false;
         },

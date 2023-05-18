@@ -83,23 +83,18 @@ async def get_items(sort: Optional[Literal["id", "name", "director", "year", "co
   limitf: Literal[int] = limit
   offsetf: Literal[int] = offset
   totalSearched = 0
-  # inter = int(search) if search is not None and search.isdigit() else None
   with conn:
     with conn.cursor() as cursor:
       if search is not None:
-          #if inter is None:
-          cursor.execute(f"SELECT * FROM movies WHERE name LIKE %s OR director LIKE %s OR company LIKE %s",
-                         (search, search, search))
+          cursor.execute(f"SELECT * FROM movies WHERE name LIKE %s OR director LIKE %s OR company LIKE %s OR year::TEXT LIKE %s",
+                         (search, search, search, search))
           itemsSearched = cursor.fetchall()
 
-          # if inter is not None:
-          #   cursor.execute(f"SELECT * FROM movies WHERE year LIKE ISNUMERIC('%s') OR rating LIKE ISNUMERIC('%s')", (inter, inter))
-          #   itemsSearched = cursor.fetchall()
 
-
-          cursor.execute(f"SELECT COUNT(*) FROM movies WHERE name LIKE %s OR director LIKE %s OR company LIKE %s",
-                         ((search), (search), (search)))
+          cursor.execute(f"SELECT COUNT(*) FROM movies WHERE name LIKE %s OR director LIKE %s OR company LIKE %s OR year::TEXT LIKE %s",
+                         (search, search, search, search))
           totalSearched = cursor.fetchone()["count"]
+
 
       elif sort is None:
         cursor.execute(f"SELECT * FROM movies LIMIT {limitf} OFFSET {offsetf}")
@@ -113,6 +108,8 @@ async def get_items(sort: Optional[Literal["id", "name", "director", "year", "co
 
       cursor.execute(f"SELECT COUNT(*) FROM movies")
       total = cursor.fetchone()["count"]
+
+
 
   return {
     "items": itemsSearched if search is not None else items,
