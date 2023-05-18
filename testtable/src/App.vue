@@ -133,7 +133,7 @@ export default {
     data: () => ({
         products: [],
         selected: [],
-        sortBy: 'id',
+        sortBy: '',
         sortDesc: false,
         loading: true,
         headers: [
@@ -188,7 +188,7 @@ export default {
                  params: {
                      offset: this.offset,
                      limit: this.limit,
-                     sort: this.sortBy,
+                     sort: this.sortBy ? this.sortBy : null,
                      order: this.sortDesc ? 'desc' : 'asc',
                      search: this.search ? '%' + this.search + '%' : null
                  }

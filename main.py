@@ -82,39 +82,31 @@ async def get_items(sort: Optional[Literal["id", "name", "director", "year", "co
                     ):
   limitf: Literal[int] = limit
   offsetf: Literal[int] = offset
-  totalSearched = 0
+
+
   with conn:
     with conn.cursor() as cursor:
+      query = ""
+
       if search is not None:
-          cursor.execute(f"SELECT * FROM movies WHERE name LIKE %s OR director LIKE %s OR company LIKE %s OR year::TEXT LIKE %s",
-                         (search, search, search, search))
-          itemsSearched = cursor.fetchall()
+          query = query + "WHERE name LIKE %s OR director LIKE %s OR year::TEXT LIKE %s OR company LIKE %s OR rating::TEXT LIKE %s "
+      if sort is not None:
+          query = query + "ORDER BY " + sort
+      if order == "desc" and sort is not None:
+            query = query + " DESC "
+      query = query + " LIMIT " + str(limitf) + " OFFSET " + str(offsetf)
 
-
-          cursor.execute(f"SELECT COUNT(*) FROM movies WHERE name LIKE %s OR director LIKE %s OR company LIKE %s OR year::TEXT LIKE %s",
-                         (search, search, search, search))
-          totalSearched = cursor.fetchone()["count"]
-
-
-      elif sort is None:
-        cursor.execute(f"SELECT * FROM movies LIMIT {limitf} OFFSET {offsetf}")
-      else:
-        if order == "desc":
-          cursor.execute(f"SELECT * FROM movies ORDER BY {sort} DESC LIMIT {limit} OFFSET {offset}")
-        else:
-          cursor.execute(f"SELECT * FROM movies ORDER BY {sort} LIMIT {limit} OFFSET {offset}")
+      cursor.execute(f"SELECT * FROM movies " + query, (search, search, search, search, search))
 
       items = cursor.fetchall()
 
-      cursor.execute(f"SELECT COUNT(*) FROM movies")
+      cursor.execute(f"SELECT COUNT(*) FROM movies " + query, (search, search, search, search, search))
       total = cursor.fetchone()["count"]
 
-
-
-  return {
-    "items": itemsSearched if search is not None else items,
-    "total": totalSearched if search is not None else total,
-  }
+      return {
+        "items": items,
+        "total": total,
+      }
 
 @app.delete("/items/{item_id}/")
 async def delete_item(item_id: str):
