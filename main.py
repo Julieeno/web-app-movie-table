@@ -87,9 +87,11 @@ async def get_items(sort: Optional[Literal["id", "name", "director", "year", "co
   with conn:
     with conn.cursor() as cursor:
       query = ""
+      countQuery = ""
 
       if search is not None:
           query = query + "WHERE name LIKE %s OR director LIKE %s OR year::TEXT LIKE %s OR company LIKE %s OR rating::TEXT LIKE %s "
+          countQuery = query
       if sort is not None:
           query = query + "ORDER BY " + sort
       if order == "desc" and sort is not None:
@@ -100,7 +102,7 @@ async def get_items(sort: Optional[Literal["id", "name", "director", "year", "co
 
       items = cursor.fetchall()
 
-      cursor.execute(f"SELECT COUNT(*) FROM movies " + query, (search, search, search, search, search))
+      cursor.execute(f"SELECT COUNT(*) FROM movies " + countQuery, (search, search, search, search, search))
       total = cursor.fetchone()["count"]
 
       return {
