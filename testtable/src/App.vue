@@ -95,6 +95,91 @@
                             <v-btn color="blue darken-1" text @click="editElement()">Save</v-btn>
                         </v-card-actions>
                     </v-card>
+                    <v-dialog
+                            v-model="filters"
+                            max-width="600px"
+                    >
+                        <template v-slot:activator="{ on, attrs }">
+                            <v-btn
+                                color="grey"
+                                v-bind="attrs"
+                                v-on="on"
+                                >
+                                Filters
+                            </v-btn>
+                        </template>
+                        <v-card>
+                            <v-toolbar
+                                dark
+                                >
+                                <v-btn
+                                    icon
+                                    color="grey"
+                                    @click="filters = false"
+                                    >
+                                    <v-icon>mdi-close</v-icon>
+                                </v-btn>
+                                <v-toolbar-title>Filters</v-toolbar-title>
+                                <v-spacer></v-spacer>
+                                <v-toolbar-items>
+            <v-btn
+              dark
+              text
+              @click="yearFilter || ratingFilter ? getFilteredItems() : fetchData();filters = false"
+            >
+              Save
+            </v-btn>
+          </v-toolbar-items>
+        </v-toolbar>
+        <v-list
+          three-line
+          subheader
+        >
+          <v-list-item>
+            <v-list-item-action>
+              <v-checkbox v-model="yearFilter"></v-checkbox>
+            </v-list-item-action>
+            <v-list-item-content>
+              <v-list-item-title>Year</v-list-item-title>
+              <v-list-item-subtitle>Apply a filter on the year</v-list-item-subtitle>
+            </v-list-item-content>
+          </v-list-item>
+            <v-card v-if="yearFilter">
+                  <v-container>
+                      <v-row>
+                          <v-col cols="12" sm="6" md="4">
+                              <v-text-field v-model="yearMin" label="Min"></v-text-field>
+                          </v-col>
+                          <v-col cols="12" sm="6" md="4">
+                              <v-text-field v-model="yearMax" label="Max"></v-text-field>
+                          </v-col>
+                      </v-row>
+                  </v-container>
+              </v-card>
+          <v-list-item>
+            <v-list-item-action>
+              <v-checkbox v-model="ratingFilter"></v-checkbox>
+            </v-list-item-action>
+              <v-list-item-content>
+              <v-list-item-title>Rating</v-list-item-title>
+              <v-list-item-subtitle>Apply a filter on ratings</v-list-item-subtitle>
+            </v-list-item-content>
+          </v-list-item>
+            <v-card v-if="ratingFilter">
+                  <v-container>
+                      <v-row>
+                          <v-col cols="12" sm="6" md="4">
+                              <v-text-field v-model="ratingMin" label="Min"></v-text-field>
+                          </v-col>
+                          <v-col cols="12" sm="6" md="4">
+                              <v-text-field v-model="ratingMax" label="Max"></v-text-field>
+                          </v-col>
+                      </v-row>
+                  </v-container>
+              </v-card>
+        </v-list>
+                        </v-card>
+                    </v-dialog>
                     <v-text-field v-model="search" @change="fetchData()" v-if="editing === false" label="Search" append-icon="mdi-magnify" single-line hide-details></v-text-field>
                 </v-row>
                 <v-col cols="12">
@@ -136,6 +221,14 @@ export default {
         sortBy: 'id',
         sortDesc: false,
         loading: true,
+        filters: false,
+        filter: '',
+        yearFilter: false,
+        yearMin: null,
+        yearMax: null,
+        ratingFilter: false,
+        ratingMin: null,
+        ratingMax: null,
         headers: [
             { text: 'Id', value: 'id' },
             { text: 'Name', value: 'name' },
@@ -201,6 +294,26 @@ export default {
                 .catch(error => {
                     console.log(error);
                 });
+        },
+        async getFilteredItems()    {
+            console.log(this.yearMin,this.yearMax);
+
+            await axios.get(`http://localhost:8000/items/filters`, {
+                params: {
+                    yearMin: this.yearMin ? parseInt(this.yearMin) : null,
+                    yearMax: this.yearMax ? parseInt(this.yearMax) : null,
+                    ratingMin: this.ratingMin ? parseFloat(this.ratingMin) : null,
+                    ratingMax: this.ratingMax ? parseFloat(this.ratingMax) : null
+                }
+            })
+              .then(response => {
+                  this.loading = false;
+                  this.totalProducts = response.data.total;
+                  this.products = response.data.items;
+              })
+              .catch(error => {
+                  console.log(error);
+              });
         },
         close() {
             this.adding = false;

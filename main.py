@@ -116,6 +116,61 @@ async def get_items(sort: Optional[Literal["id", "name", "director", "year", "co
     "total": totalSearched if search is not None else total,
   }
 
+@app.get("/items/filters")
+async def get_filtered(
+                       yearMin: Optional[int] = None,
+                       yearMax: Optional[int] = None,
+                       ratingMin: Optional[float] = None,
+                       ratingMax: Optional[float] = None,
+                       ):
+    param = []
+    with conn:
+        with conn.cursor() as cursor:
+            query = ""
+            queryCount = ""
+
+            if yearMin is not None and yearMax is None:
+                query += "year >= %s"
+                queryCount += "year >= %s"
+                param.append(yearMin)
+            if yearMax is not None and yearMin is None:
+                query += "year <= %s"
+                queryCount += "year <= %s"
+                param.append(yearMax)
+            if yearMin is not None and yearMax is not None:
+                query += "year >= %s AND year <= %s"
+                queryCount += "year >= %s AND year <= %s"
+                param.append(yearMin)
+                param.append(yearMax)
+            if (ratingMin is not None or ratingMax is not None) and (yearMin is not None or yearMax is not None):
+                query += " AND "
+                queryCount += " AND "
+            if ratingMin is not None and ratingMax is None:
+                query += "rating >= %s"
+                queryCount += "rating >= %s"
+                param.append(ratingMin)
+            if ratingMax is not None and ratingMin is None:
+                query += "rating <= %s"
+                queryCount += "rating <= %s"
+                param.append(ratingMax)
+            if ratingMin is not None and ratingMax is not None:
+                query += "rating >= %s AND rating <= %s"
+                queryCount += "rating >= %s AND rating <= %s"
+                param.append(ratingMin)
+                param.append(ratingMax)
+
+            cursor.execute(f"SELECT * FROM movies WHERE " + query, (tuple(param)))
+            filteredItems = cursor.fetchall()
+
+            cursor.execute(f"SELECT COUNT(*) FROM movies WHERE " + queryCount, (tuple(param)))
+            totalFiltered = cursor.fetchone()["count"]
+
+            return {
+                "items": filteredItems,
+                "total": totalFiltered,
+            }
+
+
 @app.delete("/items/{item_id}/")
 async def delete_item(item_id: str):
   with conn:
