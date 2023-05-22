@@ -224,7 +224,7 @@ export default {
     data: () => ({
         products: [],
         selected: [],
-        sortBy: 'id',
+        sortBy: '',
         sortDesc: false,
         loading: true,
         filters: false,
@@ -283,15 +283,15 @@ export default {
             this.offset = (this.page - 1) * this.limit;
             //console.log(this.offset);
 
-            await axios.get('http://localhost:8000/items/', {
-                params: {
-                    offset: this.offset,
-                    limit: this.limit,
-                    sort: this.sortBy,
-                    order: this.sortDesc ? 'desc' : 'asc',
-                    search: this.search ? '%' + this.search + '%' : null
-                }
-            })
+             await axios.get('http://localhost:8000/items/', {
+                 params: {
+                     offset: this.offset,
+                     limit: this.limit,
+                     sort: this.sortBy ? this.sortBy : null,
+                     order: this.sortDesc ? 'desc' : 'asc',
+                     search: this.search ? '%' + this.search + '%' : null
+                 }
+             })
                 .then(response => {
                     this.loading = false;
                     this.totalProducts = response.data.total;
