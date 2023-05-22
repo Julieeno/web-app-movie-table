@@ -9,19 +9,22 @@ conn = psycopg2.connect("dbname=test user=test password=test host=localhost port
 
 cursor = conn.cursor()
 
+
 class Item(BaseModel):
-  name: str
-  director: str
-  year: int
-  company: str
-  rating: float
+    name: str
+    director: str
+    year: int
+    company: str
+    rating: float
+
 
 class UpdateItemModel(BaseModel):
-  name: Optional[str]
-  director: Optional[str]
-  year: Optional[int]
-  company: Optional[str]
-  rating: Optional[float]
+    name: Optional[str]
+    director: Optional[str]
+    year: Optional[int]
+    company: Optional[str]
+    rating: Optional[float]
+
 
 app = FastAPI()
 
@@ -39,39 +42,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.post("/items/")
 async def create_item(item: Item):
-  with conn:
-    with conn.cursor() as cursor:
-      cursor.execute("INSERT INTO movies (name, director, year, company, rating) VALUES (%s, %s, %s, %s, %s)",
-                     (item.name, item.director, item.year, item.company, item.rating))
-  return {
-    "message": "Item created"
-  }
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute("INSERT INTO movies (name, director, year, company, rating) VALUES (%s, %s, %s, %s, %s)",
+                           (item.name, item.director, item.year, item.company, item.rating))
+    return {
+        "message": "Item created"
+    }
+
 
 @app.put("/items/{item_id}")
 async def update_item_field(item_id: int, item: UpdateItemModel):
     fields = ""
     new_values = []
     for k, v in item.dict().items():
-      if v is not None:
-        if fields == "":
-          fields += f"{k}=%s"
-        else:
-          fields += f", {k}=%s"
-        new_values.append(v)
+        if v is not None:
+            if fields == "":
+                fields += f"{k}=%s"
+            else:
+                fields += f", {k}=%s"
+            new_values.append(v)
 
     new_values.append(item_id)
     if fields == "":
-      return {
-        "message": "required body"
-      }
+        return {
+            "message": "required body"
+        }
     with conn:
-      with conn.cursor() as cursor:
-        cursor.execute(f"UPDATE movies SET {fields} WHERE id=%s", tuple(new_values))
+        with conn.cursor() as cursor:
+            cursor.execute(f"UPDATE movies SET {fields} WHERE id=%s", tuple(new_values))
     return {
-        "message": f"The following fields of the item with ID={item_id} were updated: {fields.replace('=%s','')}"
+        "message": f"The following fields of the item with ID={item_id} were updated: {fields.replace('=%s', '')}"
     }
+
 
 @app.get("/items/")
 async def get_items(sort: Optional[Literal["id", "name", "director", "year", "company", "rating"]] = None,
@@ -80,60 +86,59 @@ async def get_items(sort: Optional[Literal["id", "name", "director", "year", "co
                     limit: int = None,
                     search: Optional[str] = None
                     ):
-  limitf: Literal[int] = limit
-  offsetf: Literal[int] = offset
-  totalSearched = 0
-  with conn:
-    with conn.cursor() as cursor:
-      if search is not None:
-          cursor.execute(f"SELECT * FROM movies WHERE name LIKE %s OR director LIKE %s OR company LIKE %s OR year::TEXT LIKE %s",
-                         (search, search, search, search))
-          itemsSearched = cursor.fetchall()
+    limitf: Literal[int] = limit
+    offsetf: Literal[int] = offset
+    totalSearched = 0
+    with conn:
+        with conn.cursor() as cursor:
+            if search is not None:
+                cursor.execute(
+                    f"SELECT * FROM movies WHERE name LIKE %s OR director LIKE %s OR company LIKE %s OR year::TEXT LIKE %s",
+                    (search, search, search, search))
+                itemsSearched = cursor.fetchall()
+
+                cursor.execute(
+                    f"SELECT COUNT(*) FROM movies WHERE name LIKE %s OR director LIKE %s OR company LIKE %s OR year::TEXT LIKE %s",
+                    (search, search, search, search))
+                totalSearched = cursor.fetchone()["count"]
 
 
-          cursor.execute(f"SELECT COUNT(*) FROM movies WHERE name LIKE %s OR director LIKE %s OR company LIKE %s OR year::TEXT LIKE %s",
-                         (search, search, search, search))
-          totalSearched = cursor.fetchone()["count"]
+            elif sort is None:
+                cursor.execute(f"SELECT * FROM movies LIMIT {limitf} OFFSET {offsetf}")
+            else:
+                if order == "desc":
+                    cursor.execute(f"SELECT * FROM movies ORDER BY {sort} DESC LIMIT {limit} OFFSET {offset}")
+                else:
+                    cursor.execute(f"SELECT * FROM movies ORDER BY {sort} LIMIT {limit} OFFSET {offset}")
 
+            items = cursor.fetchall()
 
-      elif sort is None:
-        cursor.execute(f"SELECT * FROM movies LIMIT {limitf} OFFSET {offsetf}")
-      else:
-        if order == "desc":
-          cursor.execute(f"SELECT * FROM movies ORDER BY {sort} DESC LIMIT {limit} OFFSET {offset}")
-        else:
-          cursor.execute(f"SELECT * FROM movies ORDER BY {sort} LIMIT {limit} OFFSET {offset}")
+            cursor.execute(f"SELECT COUNT(*) FROM movies")
+            total = cursor.fetchone()["count"]
 
-      items = cursor.fetchall()
+    return {
+        "items": itemsSearched if search is not None else items,
+        "total": totalSearched if search is not None else total,
+    }
 
-      cursor.execute(f"SELECT COUNT(*) FROM movies")
-      total = cursor.fetchone()["count"]
-
-
-
-  return {
-    "items": itemsSearched if search is not None else items,
-    "total": totalSearched if search is not None else total,
-  }
 
 @app.get("/items/filters")
 async def get_filtered(
-                       yearMin: Optional[int] = 0,
-                       yearMax: Optional[int] = 9000,
-                       ratingMin: Optional[float] = 0,
-                       ratingMax: Optional[float] = 5,
-                       ):
-
+        yearMin: Optional[int] = 0,
+        yearMax: Optional[int] = 9000,
+        ratingMin: Optional[float] = 0,
+        ratingMax: Optional[float] = 5,
+):
     with conn:
         with conn.cursor() as cursor:
-
-            cursor.execute(f"SELECT * FROM movies WHERE year >= {yearMin} AND year <= {yearMax} "
-                           f"AND rating >= {ratingMin} AND rating <= {ratingMax}")
+            cursor.execute(f"SELECT * FROM movies WHERE year >= %s AND year <= %s "
+                           f"AND rating >= %s AND rating <= %s", (yearMin, yearMax, ratingMin, ratingMax))
 
             filteredItems = cursor.fetchall()
 
-            cursor.execute(f"SELECT COUNT(*) FROM movies WHERE year >= {yearMin} AND year <= {yearMax} "
-                           f"AND rating >= {ratingMin} AND rating <= {ratingMax}")
+            cursor.execute(f"SELECT COUNT(*) FROM movies WHERE year >= %(yMin)s AND year <= %(yMax)s "
+                           f"AND rating >= %(rMin)s AND rating <= %(rMax)s",
+                           {"yMin": yearMin, "yMax": yearMax, "rMin": ratingMin, "rMax": ratingMax})
 
             totalFiltered = cursor.fetchone()["count"]
 
@@ -145,13 +150,13 @@ async def get_filtered(
 
 @app.delete("/items/{item_id}/")
 async def delete_item(item_id: str):
-  with conn:
-    with conn.cursor() as cursor:
-      cursor.execute("DELETE FROM movies WHERE name LIKE %s", (item_id,))
-      if cursor.rowcount == 0:
-        return {
-          "message": f"Item {item_id} not found"
-        }
-      return {
-        "message": f"Item {item_id} deleted"
-      }
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM movies WHERE name LIKE %s", (item_id,))
+            if cursor.rowcount == 0:
+                return {
+                    "message": f"Item {item_id} not found"
+                }
+            return {
+                "message": f"Item {item_id} deleted"
+            }
