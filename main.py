@@ -84,37 +84,76 @@ async def get_items(sort: Optional[Literal["id", "name", "director", "year", "co
                     order: Optional[Literal["asc", "desc"]] = None,
                     offset: int = None,
                     limit: int = None,
-                    search: Optional[str] = None
+                    search: Optional[str] = None,
+                    byName: Optional[bool] = False,
+                    byDirector: Optional[bool] = False,
+                    byCompany: Optional[bool] = False,
                     ):
-  limitf: Literal[int] = limit
-  offsetf: Literal[int] = offset
+    limitf: Literal[int] = limit
+    offsetf: Literal[int] = offset
 
+    params = {
+        "name": "name",
+        "director": "director",
+        "company": "company",
+        "year": "year::TEXT",
+        "rating": "rating::TEXT",
+    }
 
-  with conn:
-    with conn.cursor() as cursor:
-      query = ""
-      countQuery = ""
+    filters = {
+        byName: "name",
+        byDirector: "director",
+        byCompany: "company",
+    }
 
-      if search is not None:
-          query = query + "WHERE name LIKE %s OR director LIKE %s OR year::TEXT LIKE %s OR company LIKE %s OR rating::TEXT LIKE %s "
-          countQuery = query
-      if sort is not None:
-          query = query + "ORDER BY " + sort
-      if order == "desc" and sort is not None:
-            query = query + " DESC "
-      query = query + " LIMIT " + str(limitf) + " OFFSET " + str(offsetf)
+    query = ""
+    countQuery = ""
+    column_search = []
 
-      cursor.execute(f"SELECT * FROM movies " + query, (search, search, search, search, search))
+    if search is not None:
+        query = "WHERE "
+        countQuery = "WHERE "
 
-      items = cursor.fetchall()
+        for k, v in filters.items():
+            if k is True:
+                if query == "WHERE ":
+                    query += f"{v} LIKE %s"
+                    countQuery += f"{v} LIKE %s"
+                else:
+                    query += f" OR {v} LIKE %s"
+                    countQuery += f" OR {v} LIKE %s"
+                column_search.append(search)
 
-      cursor.execute(f"SELECT COUNT(*) FROM movies " + countQuery, (search, search, search, search, search))
-      total = cursor.fetchone()["count"]
+        if query == "WHERE ":
+            for k, v in params.items():
+                if query == "WHERE ":
+                    query += f"{v} LIKE %s"
+                    countQuery += f"{v} LIKE %s"
+                else:
+                    query += f" OR {v} LIKE %s"
+                    countQuery += f" OR {v} LIKE %s"
+                column_search.append(search)
 
-      return {
-        "items": items,
-        "total": total,
-      }
+    if sort is not None:
+        query = query + "ORDER BY " + sort
+    if order == "desc" and sort is not None:
+        query = query + " DESC "
+    query = query + " LIMIT " + str(limitf) + " OFFSET " + str(offsetf)
+
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(f"SELECT * FROM movies " + query,
+                           tuple(column_search))
+            items = cursor.fetchall()
+
+            cursor.execute(f"SELECT COUNT(*) FROM movies " + countQuery,
+                           tuple(column_search))
+            total = cursor.fetchone()["count"]
+
+            return {
+                "items": items,
+                "total": total,
+            }
 
 
 @app.get("/items/filters")
@@ -129,7 +168,6 @@ async def get_filtered(
             cursor.execute(f"SELECT * FROM movies WHERE year >= %(yMin)s AND year <= %(yMax)s "
                            f"AND rating >= %(rMin)s AND rating <= %(rMax)s",
                            {"yMin": yearMin, "yMax": yearMax, "rMin": ratingMin, "rMax": ratingMax})
-
 
             filteredItems = cursor.fetchall()
 

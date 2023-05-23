@@ -140,6 +140,34 @@
                                     three-line
                                     subheader
                             >
+                                <v-subheader>Filters</v-subheader>
+                                <v-list-item>
+                                    <v-list-item-action>
+                                        <v-checkbox v-model="byName"></v-checkbox>
+                                    </v-list-item-action>
+                                    <v-list-item-content>
+                                        <v-list-item-title>Name</v-list-item-title>
+                                        <v-list-item-subtitle>Search movies by name</v-list-item-subtitle>
+                                    </v-list-item-content>
+                                </v-list-item>
+                                <v-list-item>
+                                    <v-list-item-action>
+                                        <v-checkbox v-model="byDirector"></v-checkbox>
+                                    </v-list-item-action>
+                                    <v-list-item-content>
+                                        <v-list-item-title>Director</v-list-item-title>
+                                        <v-list-item-subtitle>Search movies by director</v-list-item-subtitle>
+                                    </v-list-item-content>
+                                </v-list-item>
+                                <v-list-item>
+                                    <v-list-item-action>
+                                        <v-checkbox v-model="byCompany"></v-checkbox>
+                                    </v-list-item-action>
+                                    <v-list-item-content>
+                                        <v-list-item-title>Company</v-list-item-title>
+                                        <v-list-item-subtitle>Search movies by company</v-list-item-subtitle>
+                                    </v-list-item-content>
+                                </v-list-item>
                                 <v-list-item>
                                     <v-list-item-action>
                                         <v-checkbox v-model="yearFilter"></v-checkbox>
@@ -235,6 +263,9 @@ export default {
         ratingFilter: false,
         ratingMin: null,
         ratingMax: null,
+        byName: false,
+        byDirector: false,
+        byCompany: false,
         headers: [
             {text: 'Id', value: 'id'},
             {text: 'Name', value: 'name'},
@@ -283,15 +314,18 @@ export default {
             this.offset = (this.page - 1) * this.limit;
             //console.log(this.offset);
 
-             await axios.get('http://localhost:8000/items/', {
-                 params: {
-                     offset: this.offset,
-                     limit: this.limit,
-                     sort: this.sortBy ? this.sortBy : null,
-                     order: this.sortDesc ? 'desc' : 'asc',
-                     search: this.search ? '%' + this.search + '%' : null
-                 }
-             })
+            await axios.get('http://localhost:8000/items/', {
+                params: {
+                    byName: this.byName ? true : null,
+                    byDirector: this.byDirector ? true : null,
+                    byCompany: this.byCompany ? true : null,
+                    search: this.search ? '%' + this.search + '%' : null,
+                    sort: this.sortBy ? this.sortBy : null,
+                    order: this.sortDesc ? 'desc' : 'asc',
+                    offset: this.offset,
+                    limit: this.limit,
+                }
+            })
                 .then(response => {
                     this.loading = false;
                     this.totalProducts = response.data.total;
