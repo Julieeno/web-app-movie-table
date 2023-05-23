@@ -126,8 +126,10 @@ async def get_filtered(
 ):
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM movies WHERE year >= %s AND year <= %s "
-                           f"AND rating >= %s AND rating <= %s", (yearMin, yearMax, ratingMin, ratingMax))
+            cursor.execute(f"SELECT * FROM movies WHERE year >= %(yMin)s AND year <= %(yMax)s "
+                           f"AND rating >= %(rMin)s AND rating <= %(rMax)s",
+                           {"yMin": yearMin, "yMax": yearMax, "rMin": ratingMin, "rMax": ratingMax})
+
 
             filteredItems = cursor.fetchall()
 
