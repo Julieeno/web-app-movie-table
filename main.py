@@ -79,15 +79,99 @@ async def update_item_field(item_id: int, item: UpdateItemModel):
     }
 
 
-@app.get("/items/")
+@app.get("/items/filtered_search/")
+async def get_filtered_items(sort: Optional[Literal["id", "name", "director", "year", "company", "rating"]] = None,
+                             order: Optional[Literal["asc", "desc"]] = None,
+                             offset: int = None,
+                             limit: int = None,
+                             name: Optional[str] = None,
+                             director: Optional[str] = None,
+                             company: Optional[str] = None,
+                             yearMin: Optional[int] = 0,
+                             yearMax: Optional[int] = 9000,
+                             ratingMin: Optional[float] = 0,
+                             ratingMax: Optional[float] = 5,
+                             ):
+    limitf: Literal[int] = limit
+    offsetf: Literal[int] = offset
+
+    filtered_search = {}
+    lower_filters = {}
+    higher_filters = {}
+
+    if name is not None:
+        filtered_search["name"] = name
+    if director is not None:
+        filtered_search["director"] = director
+    if company is not None:
+        filtered_search["company"] = company
+
+    if yearMin is not None:
+        lower_filters["year"] = yearMin
+    if yearMax is not None:
+        higher_filters["year"] = yearMax
+    if ratingMin is not None:
+        lower_filters["rating"] = ratingMin
+    if ratingMax is not None:
+        higher_filters["rating"] = ratingMax
+
+    print(filtered_search)
+
+    query = ""
+    column_search = []
+
+    if filtered_search or lower_filters or higher_filters:
+        query = "WHERE "
+
+        for k, v in lower_filters.items():
+            if query == "WHERE ":
+                query += f"{k} >= %s"
+            else:
+                query += f" AND {k} >= %s"
+            column_search.append(v)
+        for k, v in higher_filters.items():
+            if query == "WHERE ":
+                query += f"{k} <= %s"
+            else:
+                query += f" AND {k} <= %s"
+            column_search.append(v)
+
+        for k, v in filtered_search.items():
+            if query == "WHERE ":
+                query += f"{k} LIKE %s"
+            else:
+                query += f" AND {k} LIKE %s"
+            column_search.append("%" + v + "%")
+
+    countQuery = query
+
+    if sort is not None:
+        query = query + "ORDER BY " + sort
+    if order == "desc" and sort is not None:
+        query = query + " DESC "
+    query = query + " LIMIT " + str(limitf) + " OFFSET " + str(offsetf)
+
+    with conn:
+        with conn.cursor() as cursor:
+            cursor.execute(f"SELECT * FROM movies " + query,
+                           tuple(column_search))
+            items = cursor.fetchall()
+
+            cursor.execute(f"SELECT COUNT(*) FROM movies " + countQuery,
+                           tuple(column_search))
+            total = cursor.fetchone()["count"]
+
+            return {
+                "items": items,
+                "total": total,
+            }
+
+@app.get("/items/search/")
 async def get_items(sort: Optional[Literal["id", "name", "director", "year", "company", "rating"]] = None,
                     order: Optional[Literal["asc", "desc"]] = None,
                     offset: int = None,
                     limit: int = None,
                     search: Optional[str] = None,
-                    byName: Optional[bool] = False,
-                    byDirector: Optional[bool] = False,
-                    byCompany: Optional[bool] = False,
                     ):
     limitf: Literal[int] = limit
     offsetf: Literal[int] = offset
@@ -100,39 +184,21 @@ async def get_items(sort: Optional[Literal["id", "name", "director", "year", "co
         "rating": "rating::TEXT",
     }
 
-    filters = {
-        byName: "name",
-        byDirector: "director",
-        byCompany: "company",
-    }
-
     query = ""
-    countQuery = ""
     column_search = []
 
     if search is not None:
         query = "WHERE "
-        countQuery = "WHERE "
-
-        for k, v in filters.items():
-            if k is True:
-                if query == "WHERE ":
-                    query += f"{v} LIKE %s"
-                    countQuery += f"{v} LIKE %s"
-                else:
-                    query += f" OR {v} LIKE %s"
-                    countQuery += f" OR {v} LIKE %s"
-                column_search.append(search)
 
         if query == "WHERE ":
             for k, v in params.items():
                 if query == "WHERE ":
                     query += f"{v} LIKE %s"
-                    countQuery += f"{v} LIKE %s"
                 else:
                     query += f" OR {v} LIKE %s"
-                    countQuery += f" OR {v} LIKE %s"
                 column_search.append(search)
+
+    countQuery = query
 
     if sort is not None:
         query = query + "ORDER BY " + sort

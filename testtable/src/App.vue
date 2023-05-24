@@ -130,7 +130,7 @@
                                     <v-btn
                                             dark
                                             text
-                                            @click="yearFilter || ratingFilter ? getFilteredItems() : fetchData();filters = false"
+                                            @click="fetchFilteredData();filters = false"
                                     >
                                         Save
                                     </v-btn>
@@ -148,6 +148,15 @@
                                     <v-list-item-content>
                                         <v-list-item-title>Name</v-list-item-title>
                                         <v-list-item-subtitle>Search movies by name</v-list-item-subtitle>
+                                        <v-card v-if="byName">
+                                            <v-container>
+                                                <v-row>
+                                                    <v-col cols="12" sm="6" md="4">
+                                                        <v-text-field v-model="searchName" label="Name"></v-text-field>
+                                                    </v-col>
+                                                </v-row>
+                                            </v-container>
+                                        </v-card>
                                     </v-list-item-content>
                                 </v-list-item>
                                 <v-list-item>
@@ -157,6 +166,16 @@
                                     <v-list-item-content>
                                         <v-list-item-title>Director</v-list-item-title>
                                         <v-list-item-subtitle>Search movies by director</v-list-item-subtitle>
+                                        <v-card v-if="byDirector">
+                                            <v-container>
+                                                <v-row>
+                                                    <v-col cols="12" sm="6" md="4">
+                                                        <v-text-field v-model="searchDirector"
+                                                                      label="Director"></v-text-field>
+                                                    </v-col>
+                                                </v-row>
+                                            </v-container>
+                                        </v-card>
                                     </v-list-item-content>
                                 </v-list-item>
                                 <v-list-item>
@@ -166,6 +185,16 @@
                                     <v-list-item-content>
                                         <v-list-item-title>Company</v-list-item-title>
                                         <v-list-item-subtitle>Search movies by company</v-list-item-subtitle>
+                                        <v-card v-if="byCompany">
+                                            <v-container>
+                                                <v-row>
+                                                    <v-col cols="12" sm="6" md="4">
+                                                        <v-text-field v-model="searchCompany"
+                                                                      label="Company"></v-text-field>
+                                                    </v-col>
+                                                </v-row>
+                                            </v-container>
+                                        </v-card>
                                     </v-list-item-content>
                                 </v-list-item>
                                 <v-list-item>
@@ -266,6 +295,9 @@ export default {
         byName: false,
         byDirector: false,
         byCompany: false,
+        searchName: '',
+        searchDirector: '',
+        searchCompany: '',
         headers: [
             {text: 'Id', value: 'id'},
             {text: 'Name', value: 'name'},
@@ -314,16 +346,42 @@ export default {
             this.offset = (this.page - 1) * this.limit;
             //console.log(this.offset);
 
-            await axios.get('http://localhost:8000/items/', {
+            await axios.get('http://localhost:8000/items/search/', {
                 params: {
-                    byName: this.byName ? true : null,
-                    byDirector: this.byDirector ? true : null,
-                    byCompany: this.byCompany ? true : null,
                     search: this.search ? '%' + this.search + '%' : null,
                     sort: this.sortBy ? this.sortBy : null,
                     order: this.sortDesc ? 'desc' : 'asc',
                     offset: this.offset,
                     limit: this.limit,
+                }
+            })
+                .then(response => {
+                    this.loading = false;
+                    this.totalProducts = response.data.total;
+                    this.products = response.data.items;
+                })
+                .catch(error => {
+                    console.log(error);
+                });
+        },
+        async fetchFilteredData() {
+            this.loading = true;
+            this.offset = (this.page - 1) * this.limit;
+
+            await axios.get('http://localhost:8000/items/filtered_search/', {
+                params: {
+                    sort: this.sortBy ? this.sortBy : null,
+                    order: this.sortDesc ? 'desc' : 'asc',
+                    offset: this.offset,
+                    limit: this.limit,
+                    name: this.byName ? this.searchName : null,
+                    director: this.byDirector ? this.searchDirector : null,
+                    company: this.byCompany ? this.searchCompany : null,
+                    yearMin: this.yearMin ? parseInt(this.yearMin) : null,
+                    yearMax: this.yearMax ? parseInt(this.yearMax) : null,
+                    ratingMin: this.ratingMin ? parseFloat(this.ratingMin) : null,
+                    ratingMax: this.ratingMax ? parseFloat(this.ratingMax) : null,
+
                 }
             })
                 .then(response => {
@@ -403,6 +461,7 @@ export default {
     },
     mounted() {
         this.fetchData();
+        this.fetchFilteredData();
     }
 };
 
